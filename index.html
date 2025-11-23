@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>✨ AI Text Prediction – Offline ML</title>
+
+<style>
+    body {
+        font-family: "Poppins", Arial, sans-serif;
+        background: linear-gradient(135deg, #dff1ff, #f4e1ff);
+        margin: 0;
+        padding: 30px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .container {
+        width: 850px;
+        background: #ffffffcc;
+        padding: 25px;
+        border-radius: 16px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.15);
+        animation: fadeIn 1s ease;
+        backdrop-filter: blur(5px);
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(30px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+        text-align: center;
+        color: #3f0066;
+        font-size: 32px;
+        font-weight: bold;
+        animation: glow 2s infinite alternate;
+    }
+
+    @keyframes glow {
+        from { text-shadow: 0 0 6px #c56dff; }
+        to   { text-shadow: 0 0 20px #8e00ff; }
+    }
+
+    textarea {
+        width: 100%;
+        padding: 15px;
+        height: 130px;
+        border-radius: 12px;
+        border: 2px solid #bb77ff;
+        font-size: 17px;
+        outline: none;
+        box-shadow: 0 0 10px #e8d9ff inset;
+        transition: 0.3s;
+    }
+
+    textarea:focus {
+        border-color: #7f00ff;
+        box-shadow: 0 0 12px #cda8ff inset;
+    }
+
+    button {
+        width: 100%;
+        padding: 15px;
+        background: linear-gradient(135deg, #8400ff, #e400ff);
+        color: white;
+        font-size: 20px;
+        border-radius: 12px;
+        border: none;
+        cursor: pointer;
+        margin-top: 15px;
+        transition: 0.2s;
+        position: relative;
+        overflow: hidden;
+        font-weight: bold;
+    }
+
+    button:active {
+        transform: scale(0.98);
+    }
+
+    button::after {
+        content: "";
+        position: absolute;
+        width: 0;
+        height: 0;
+        background: rgba(255,255,255,0.5);
+        border-radius: 50%;
+        left: var(--x);
+        top: var(--y);
+        transform: translate(-50%, -50%);
+        animation: ripple 0.6s linear;
+        pointer-events: none;
+    }
+
+    @keyframes ripple {
+        from { width: 0; height: 0; opacity: 0.8; }
+        to   { width: 280px; height: 280px; opacity: 0; }
+    }
+
+    .result-box {
+        background: white;
+        margin-top: 20px;
+        padding: 18px;
+        border-radius: 12px;
+        font-size: 18px;
+        box-shadow: 0 0 14px rgba(0,0,0,0.15);
+        animation: slideUp 0.7s ease;
+    }
+
+    @keyframes slideUp {
+        from { transform: translateY(25px); opacity: 0; }
+        to   { transform: translateY(0); opacity: 1; }
+    }
+
+    .highlight {
+        padding: 6px 12px;
+        border-radius: 8px;
+        color: white;
+        font-weight: bold;
+    }
+
+    .pos { background: #28a745; }
+    .neg { background: #dc3545; }
+    .neu { background: #6c757d; }
+    .spam { background: #ff9800; }
+    .safe { background: #007bff; }
+    .toxic { background: #ff0033; }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>✨ AI Text Prediction – Offline ML</h1>
+
+    <textarea id="inputText" placeholder="Type something... (ex: very more happy, I am not good, you won free offer)"></textarea>
+
+    <button onclick="predict(event)">Predict (Done by Nirosha Srinivasan)</button>
+
+    <div id="results"></div>
+</div>
+
+<script>
+// ------------------- Dictionaries -------------------
+const positiveWords = ["good","great","happy","love","nice","excellent","awesome","super","fantastic"];
+const negativeWords = ["bad","sad","hate","terrible","worst","angry","upset","poor"];
+const spamWords = ["win","free","offer","click","money","lottery","bonus","urgent"];
+const toxicWords = ["idiot","stupid","nonsense","useless","kill","shut up"];
+const negations = ["not","never","no","dont","don’t","won't","cannot"];
+
+const intensityWords = ["very","more","really","so","super","extremely","highly"];
+
+const emotions = {
+    happy: ["happy","joy","love","excited","pleasure"],
+    sad: ["sad","cry","hurt","pain","lonely"],
+    anger: ["angry","hate","furious","rage","annoyed"],
+    fear: ["scared","afraid","fear","worry","nervous"],
+    surprise: ["wow","omg","unexpected","shocked"]
+};
+
+// ------------------- Prediction -------------------
+function predict(e) {
+    let rect = e.target.getBoundingClientRect();
+    e.target.style.setProperty("--x", e.clientX - rect.left + "px");
+    e.target.style.setProperty("--y", e.clientY - rect.top + "px");
+
+    let text = document.getElementById("inputText").value.toLowerCase();
+    let words = text.split(/\s+/);
+
+    let score = 0, spamScore = 0, toxicScore = 0;
+    let emoScore = {happy:0, sad:0, anger:0, fear:0, surprise:0};
+
+    let intensity = 0;
+    intensityWords.forEach(w => { if (text.includes(w)) intensity++; });
+
+    for (let i = 0; i < words.length; i++) {
+        let w = words[i];
+        let neg = (i > 0 && negations.includes(words[i-1]));
+
+        if (positiveWords.includes(w)) score += neg ? -1 : (1 + intensity);
+        if (negativeWords.includes(w)) score += neg ? (1 + intensity) : -1;
+
+        if (spamWords.includes(w)) spamScore++;
+        if (toxicWords.includes(w)) toxicScore++;
+
+        for (let emo in emotions) {
+            if (emotions[emo].includes(w)) emoScore[emo] += (neg ? -1 : (1 + intensity));
+        }
+    }
+
+    let sentiment = "Neutral 😐";
+    let highlightClass = "neu";
+
+    if (score >= 4) { sentiment = "Highly Positive 😍🔥"; highlightClass = "pos"; }
+    else if (score >= 2) { sentiment = "Positive 😊"; highlightClass = "pos"; }
+    else if (score == 1) { sentiment = "Slight Positive 🙂"; highlightClass = "pos"; }
+    else if (score == -1) { sentiment = "Slight Negative 🙁"; highlightClass = "neg"; }
+    else if (score <= -2) { sentiment = "Negative ☹️"; highlightClass = "neg"; }
+    else if (score <= -4) { sentiment = "Highly Negative 😡🔥"; highlightClass = "neg"; }
+
+    let spam = spamScore >= 2 ? "<span class='highlight spam'>Spam ⚠️</span>" :
+                                 "<span class='highlight safe'>Not Spam ✔️</span>";
+
+    let toxic = "Safe 👍";
+    if (toxicScore >= 2) toxic = "<span class='highlight toxic'>Highly Toxic ❌</span>";
+    else if (toxicScore === 1) toxic = "<span class='highlight toxic'>Toxic ⚠️</span>";
+    else toxic = "<span class='highlight safe'>Safe 👍</span>";
+
+    let dominantEmotion = Object.keys(emoScore).reduce((a,b)=>emoScore[a] > emoScore[b] ? a : b);
+    if (emoScore[dominantEmotion] <= 0) dominantEmotion = "Neutral";
+
+    let sarcasm =
+        (text.includes("yeah right") ||
+         text.includes("as if") ||
+         (positiveWords.some(p=>text.includes(p)) && negativeWords.some(n=>text.includes(n))))
+         ? "Possible Sarcasm 😏"
+         : "No";
+
+    document.getElementById("results").innerHTML = `
+        <div class='result-box'>
+            <div><b>Sentiment:</b> <span class="highlight ${highlightClass}">${sentiment}</span></div><br>
+            <div><b>Emotion:</b> ${capitalize(dominantEmotion)}</div><br>
+            <div><b>Spam Detection:</b> ${spam}</div><br>
+            <div><b>Toxicity:</b> ${toxic}</div><br>
+            <div><b>Sarcasm:</b> ${sarcasm}</div><br>
+            <div><b>Polarity Score:</b> ${score}</div>
+        </div>`;
+}
+
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+</script>
+
+</body>
+</html>
